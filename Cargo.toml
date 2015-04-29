@@ -1,0 +1,7 @@
+[package]
+name = "krb5"
+version = "0.1.0"
+authors = ["Michael Komitee <komitee@deshaw.com>"]
+
+[dependencies]
+libc = "*"
