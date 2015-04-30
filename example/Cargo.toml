@@ -1,0 +1,7 @@
+[package]
+name = "krb5-example"
+version = "0.1.0"
+authors = ["Michael Komitee <mkomitee@gmail.com>"]
+
+[dependencies.krb5]
+path = "../"
