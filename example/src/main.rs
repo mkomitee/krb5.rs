@@ -1,9 +1,13 @@
 extern crate krb5;
 
 fn main() {
-    let kctx = krb5::Context::new();
-    match kctx {
-        Ok(ctx) => println!("Success, got context: {:?}", ctx),
-        Err(e) => println!("Failure, cannot initialize conterxt: {:?}", e)
-    }
+    let ctx = match krb5::Context::new() {
+        Ok(ctx) => ctx,
+        Err(e) => panic!("Failure, cannot initialize conterxt: {:?}", e)
+    };
+
+    println!("Success, got context: {:?}", ctx);
+
+    let local = ctx.localname("foo/bar@WHAT.COM");
+    println!("WAT?: {:?}", local);
 }
