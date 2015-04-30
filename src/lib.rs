@@ -10,27 +10,27 @@ struct krb5_context;
 
 #[allow(raw_pointer_derive)]
 #[derive(Debug)]
-pub struct Krb5Context {
+pub struct Context {
     ctx: *mut krb5_context,
 }
 
-pub type Krb5Error = krb5_error_code;
+pub type Error = krb5_error_code;
 
-pub type Krb5Result<T> = Result<T, Krb5Error>;
+pub type Result<T> = std::result::Result<T, Error>;
 
-impl Krb5Context {
-    pub fn new() -> Krb5Result<Krb5Context> {
+impl Context {
+    pub fn new() -> Result<Context> {
         let mut kcontext: *mut krb5_context = std::ptr::null_mut();
         let err = unsafe {krb5_init_context(&mut kcontext)};
         if err == 0 {
-            Ok(Krb5Context{ctx: kcontext})
+            Ok(Context{ctx: kcontext})
         } else {
             Err(err)
         }
     }
 }
 
-impl Drop for Krb5Context {
+impl Drop for Context {
     fn drop(&mut self) {
         unsafe{
             krb5_free_context(self.ctx)
@@ -43,11 +43,3 @@ extern "C" {
     fn krb5_init_context(context: *mut *mut krb5_context) -> krb5_error_code;
     fn krb5_free_context(context: *mut krb5_context);
 }
-
-// fn main() {
-//     let kctx = Krb5Context::new();
-//     match kctx {
-//         Ok(ctx) => println!("Success, got context: {:?}", ctx),
-//         Err(e) => println!("Failure, cannot initialize conterxt: {:?}", e)
-//     }
-// }
