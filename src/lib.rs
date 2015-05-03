@@ -2,6 +2,7 @@ extern crate libc;
 
 use libc::{c_char, c_int, strlen};
 use std::ffi::{NulError, CString};
+use std::string::FromUtf8Error;
 
 const MAX_USERNAME: c_int = 256;
 
@@ -14,12 +15,19 @@ const MAX_USERNAME: c_int = 256;
 #[derive(Debug)]
 pub enum Error {
     Krb5(c_int),
+    FromUtf8(FromUtf8Error),
     Nul(NulError),
 }
 
 impl From<NulError> for Error {
     fn from(e: NulError) -> Error {
         Error::Nul(e)
+    }
+}
+
+impl From<FromUtf8Error> for Error {
+    fn from(e: FromUtf8Error) -> Error {
+        Error::FromUtf8(e)
     }
 }
 
@@ -89,13 +97,7 @@ impl Context {
         let len = unsafe {strlen(lname.as_ptr() as *const i8)};
         lname.truncate(len as usize);
 
-        // TODO: Fix this error. Having issues w/ the From Trait on
-        // this error type, it's not Utf8Error, it's something in
-        // collections.
-        match String::from_utf8(lname) {
-            Ok(s) => Ok(s),
-            Err(_) => Err(Error::Krb5(-1)),
-        }
+        Ok(try!(String::from_utf8(lname)))
     }
 }
 
