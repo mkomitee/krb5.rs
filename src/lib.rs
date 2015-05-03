@@ -1,6 +1,6 @@
 extern crate libc;
 
-use libc::{c_char, c_int};
+use libc::{c_char, c_int, strlen};
 use std::ffi::{NulError, CString};
 
 const MAX_USERNAME: c_int = 256;
@@ -57,33 +57,38 @@ impl Context {
             Err(Error::Krb5(err))
         }
     }
+
+    // TODO: evaluate if it's appropriate to return a CString, an
+    // OsString, or something else. It probably doesn't make sense to
+    // require Utf8 encoding in this library.
     pub fn localname(&self, name: &str) -> Result<String> {
-        println!("name: {:?}", name);
         let mut kprinc: *mut krb5_principal = std::ptr::null_mut();
-        println!("kprinc: {:?}", kprinc);
         let cname = try!(CString::new(name.as_bytes()));
-        println!("cname: {:?}", cname);
         let err = unsafe {krb5_parse_name(self.ctx, cname.as_ptr(), &mut kprinc)};
-        println!("err: {:?}", err);
         if err != 0 {
             return Err(Error::Krb5(err));
         }
 
-        unsafe {krb5_free_principal(self.ctx, kprinc)}
 
         let mut lname: Vec<u8> = Vec::with_capacity(MAX_USERNAME as usize);
-        println!("initial lname: {:?}", lname);
-        // TODO: Verify that this works somewhere that has localname
-        // translation rules :) It doesn't segfault, but it returns a
-        // KRB5_LNAME_NOTRANS every time.
+        unsafe {lname.set_len((MAX_USERNAME - 1) as usize)};
+        lname.push('\0' as u8);
         let err = unsafe {krb5_aname_to_localname(self.ctx,
                                                   kprinc,
                                                   MAX_USERNAME - 1,
                                                   &mut lname[..])};
-        println!("err: {:?}", err);
+        unsafe {krb5_free_principal(self.ctx, kprinc)}
         if err != 0 {
             return Err(Error::Krb5(err));
         }
+
+        // Need to find the length (position of the NUL put in place by
+        // krb5_aname_to_lname to indicate the end of the string and
+        // truncate the Vec<u8> to that size so that we can convert it
+        // it to a String
+        let len = unsafe {strlen(lname.as_ptr() as *const i8)};
+        lname.truncate(len as usize);
+
         // TODO: Fix this error. Having issues w/ the From Trait on
         // this error type, it's not Utf8Error, it's something in
         // collections.
