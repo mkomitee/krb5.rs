@@ -3,5 +3,9 @@ name = "krb5-example"
 version = "0.1.0"
 authors = ["Michael Komitee <mkomitee@gmail.com>"]
 
+[[bin]]
+name = "aname2lname"
+path = "src/aname2lname.rs"
+
 [dependencies.krb5]
 path = "../"

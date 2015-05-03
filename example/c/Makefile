@@ -2,7 +2,9 @@ LDFLAGS=$(shell krb5-config --libs krb5)
 CFLAGS=-Wall -Wextra -Werror
 KRB5_CONFIG=../krb5.conf
 
-.PHONY: check clean test-aname2lname
+.PHONY: all clean test test-aname2lname
+
+all: aname2lname
 
 test: test-aname2lname
 

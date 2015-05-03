@@ -1,11 +1,18 @@
-.PHONY: test test-c clean clean-c
+KRB5_CONFIG=krb5.conf
 
-test: test-c
+.PHONY: all clean build test test-aname2lname
 
-clean: clean-c
+all: build
 
-test-c:
-	$(MAKE) -C c test
+test: test-aname2lname
 
-clean-c:
-	$(MAKE) -C c clean
+test-aname2lname: target/debug/aname2lname
+	KRB5_CONFIG=$(KRB5_CONFIG) $<
+
+target/debug/aname2lname: build
+
+build:
+	cargo build
+
+clean:
+	cargo clean
