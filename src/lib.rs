@@ -8,15 +8,63 @@ const MAX_USERNAME: c_int = 256;
 
 // TODO: We can do better here. The man pages indicate the specific
 // errors we may receive. For example, krb5_aname_to_localname returns
-// either KRB5_LNAME_NOTRANS or KRB5_CONFIG_NOTENUFSPACE. Also we
-// should create our own struct which implements the Error trait which
-// wraps the raw Error so that it may later be retrieved and
-// inspected.
+// either KRB5_LNAME_NOTRANS or KRB5_CONFIG_NOTENUFSPACE.
 #[derive(Debug)]
 pub enum Error {
-    Krb5(c_int),
+    Krb5(Krb5Error),
     FromUtf8(FromUtf8Error),
     Nul(NulError),
+}
+
+#[derive(Debug)]
+pub struct Krb5Error {
+    major: c_int,
+    minor: Option<c_int>,
+}
+
+impl Krb5Error {
+    fn as_str(&self) -> String {
+        match self.minor {
+            Some(m) => format!("Kerberos Major: {}, Minor: {}", self.major, m),
+            None => format!("Kerberos Major: {}", self.major),
+        }
+    }
+}
+
+impl std::fmt::Display for Krb5Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match *self {
+            Error::FromUtf8(ref e) => e.fmt(f),
+            Error::Nul(ref e) => e.fmt(f),
+            Error::Krb5(ref e) => e.fmt(f),
+        }
+    }
+}
+impl std::error::Error for Error {
+    fn description(&self) -> &str {
+        match *self {
+            Error::FromUtf8(ref e) => e.description(),
+            Error::Nul(ref e) => e.description(),
+            // TODO: Find a way to get this to return e.as_str(). The
+            // problem is that it must be an &str, and if we take a
+            // ref to e.as_str(), the borrow doesn't last long enough.
+            // Error::Krb5(ref e) => e.as_str().as_ref(),
+            Error::Krb5(_) => "",
+        }
+    }
+    fn cause(&self) -> Option<&std::error::Error> {
+        match *self {
+            Error::FromUtf8(ref e) => Some(e as &std::error::Error),
+            Error::Nul(ref e) => Some(e as &std::error::Error),
+            Error::Krb5(_) => None,
+        }
+    }
 }
 
 impl From<NulError> for Error {
@@ -62,7 +110,7 @@ impl Context {
         if err == 0 {
             Ok(Context{ctx: kcontext})
         } else {
-            Err(Error::Krb5(err))
+            Err(Error::Krb5(Krb5Error{major: err, minor: None}))
         }
     }
 
@@ -74,7 +122,7 @@ impl Context {
         let cname = try!(CString::new(name.as_bytes()));
         let err = unsafe {krb5_parse_name(self.ctx, cname.as_ptr(), &mut kprinc)};
         if err != 0 {
-            return Err(Error::Krb5(err));
+            return Err(Error::Krb5(Krb5Error{major: err, minor: None}));
         }
 
 
@@ -87,7 +135,7 @@ impl Context {
                                                   &mut lname[..])};
         unsafe {krb5_free_principal(self.ctx, kprinc)}
         if err != 0 {
-            return Err(Error::Krb5(err));
+            return Err(Error::Krb5(Krb5Error{major: err, minor: None}));
         }
 
         // Need to find the length (position of the NUL put in place by

@@ -5,8 +5,11 @@ fn main() {
         Ok(ctx) => ctx,
         Err(e) => panic!("Failure, cannot initialize conterxt: {:?}", e)
     };
-
     println!("Success, got context: {:?}", ctx);
-    let local = ctx.localname("user@EXAMPLE.COM");
-    println!("WAT?: {:?}", local);
+
+    let lname = match ctx.localname("user@EXAMPLE.COM") {
+        Ok(lname) => lname,
+        Err(e) => panic!("Failure, cannot translate authenticated name: {:?}", e),
+    };
+    println!("Success, translated name: {}", lname);
 }
