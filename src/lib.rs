@@ -118,9 +118,9 @@ impl Context {
     // OsString, or something else. It probably doesn't make sense to
     // require Utf8 encoding in this library.
     pub fn localname(&self, name: &str) -> Result<String> {
-        let mut kprinc: *mut krb5_principal = std::ptr::null_mut();
+        let mut princ = Principal::new(self);
         let cname = try!(CString::new(name.as_bytes()));
-        let err = unsafe {krb5_parse_name(self.ctx, cname.as_ptr(), &mut kprinc)};
+        let err = unsafe {krb5_parse_name(self.ctx, cname.as_ptr(), &mut princ.princ)};
         if err != 0 {
             return Err(Error::Krb5(Krb5Error{major: err, minor: None}));
         }
@@ -130,10 +130,9 @@ impl Context {
         unsafe {lname.set_len((MAX_USERNAME - 1) as usize)};
         lname.push('\0' as u8);
         let err = unsafe {krb5_aname_to_localname(self.ctx,
-                                                  kprinc,
+                                                  princ.princ,
                                                   MAX_USERNAME - 1,
                                                   &mut lname[..])};
-        unsafe {krb5_free_principal(self.ctx, kprinc)}
         if err != 0 {
             return Err(Error::Krb5(Krb5Error{major: err, minor: None}));
         }
@@ -169,6 +168,26 @@ impl Context {
 #[allow(non_camel_case_types)]
 #[repr(C)]
 struct krb5_principal;
+pub struct Principal<'a> {
+    princ: *mut krb5_principal,
+    ctx: &'a Context,
+}
+
+impl<'a> Principal<'a> {
+    // TODO: Should the constructor take a principal name and handle
+    // calling krb5_parse_name for it? Should it not require a Context
+    // to be passed in, and initialize one?
+    fn new(ctx: &Context) -> Principal {
+        Principal{princ: std::ptr::null_mut(), ctx: ctx}
+    }
+}
+
+impl<'a> Drop for Principal<'a> {
+    fn drop(&mut self) {
+        unsafe {krb5_free_principal(self.ctx.ctx, self.princ)}
+    }
+}
+
 
 
 #[link(name = "krb5")]
