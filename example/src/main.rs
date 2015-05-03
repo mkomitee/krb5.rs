@@ -7,7 +7,6 @@ fn main() {
     };
 
     println!("Success, got context: {:?}", ctx);
-
-    let local = ctx.localname("user@EXAMPLE.ORG");
+    let local = ctx.localname("user@EXAMPLE.COM");
     println!("WAT?: {:?}", local);
 }
