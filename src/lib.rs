@@ -7,12 +7,9 @@ use std::string::FromUtf8Error;
 const MAX_USERNAME: c_int = 256;
 
 fn c_to_string(raw: *const c_char) -> Option<String> {
-    let c_str = unsafe{CStr::from_ptr(raw)};
-    let c_string = std::str::from_utf8(c_str.to_bytes());
-    match c_string {
-        Ok(c) => Some(c.to_string()),
-        Err(_) => None,
-    }
+    std::str::from_utf8(unsafe{CStr::from_ptr(raw)}.to_bytes())
+        .ok()
+        .map(|o| o.to_string())
 }
 
 // TODO: We can do better here. The man pages indicate the specific
@@ -68,10 +65,6 @@ impl std::error::Error for Error {
         match *self {
             Error::FromUtf8(ref e) => e.description(),
             Error::Nul(ref e) => e.description(),
-            // TODO: Find a way to get this to return e.as_str(). The
-            // problem is that it must be an &str, and if we take a
-            // ref to e.as_str(), the borrow doesn't last long enough.
-            // Error::Krb5(ref e) => e.as_str().as_ref(),
             Error::Krb5(ref e) => e.description(),
         }
     }
