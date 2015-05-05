@@ -238,23 +238,22 @@ extern "C" {
                                size: c_int,
                                lname: *mut [u8]) -> c_int;
 
-
     // From krb5.h:
-    //   const char * KRB5_CALLCONV
-    //   krb5_get_error_message(krb5_context ctx,
-    //                          krb5_error_code code);
+    //  const char * KRB5_CALLCONV
+    //  krb5_get_error_message(krb5_context ctx,
+    //                         krb5_error_code code);
     fn krb5_get_error_message(context: *mut krb5_context,
                               code: c_int) -> *const c_char;
 
     // From krb5.h:
-    //   void KRB5_CALLCONV
-    //   krb5_clear_error_message(krb5_context ctx);
+    //  void KRB5_CALLCONV
+    //  krb5_clear_error_message(krb5_context ctx);
     fn krb5_clear_error_message(context: *mut krb5_context);
 
     // From krb5.h:
-    //   void KRB5_CALLCONV
-    //   krb5_free_error_message(krb5_context ctx,
-    //                           const char *msg);
+    //  void KRB5_CALLCONV
+    //  krb5_free_error_message(krb5_context ctx,
+    //                          const char *msg);
     fn krb5_free_error_message(context: *mut krb5_context,
                                message: *const c_char);
 }
