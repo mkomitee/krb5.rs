@@ -1,10 +1,19 @@
 extern crate libc;
 
 use libc::{c_char, c_int, strlen};
-use std::ffi::{NulError, CString};
+use std::ffi::{NulError, CString, CStr};
 use std::string::FromUtf8Error;
 
 const MAX_USERNAME: c_int = 256;
+
+fn c_to_string(raw: *const c_char) -> Option<String> {
+    let c_str = unsafe{CStr::from_ptr(raw)};
+    let c_string = std::str::from_utf8(c_str.to_bytes());
+    match c_string {
+        Ok(c) => Some(c.to_string()),
+        Err(_) => None,
+    }
+}
 
 // TODO: We can do better here. The man pages indicate the specific
 // errors we may receive. For example, krb5_aname_to_localname returns
@@ -19,21 +28,29 @@ pub enum Error {
 #[derive(Debug)]
 pub struct Krb5Error {
     major: c_int,
-    minor: Option<c_int>,
+    message: String,
 }
 
 impl Krb5Error {
-    fn as_str(&self) -> String {
-        match self.minor {
-            Some(m) => format!("Kerberos Major: {}, Minor: {}", self.major, m),
-            None => format!("Kerberos Major: {}", self.major),
+    fn new(major: c_int) -> Krb5Error {
+        let message = format!("Kerberos Error: {}", major).to_string();
+        Krb5Error{major: major, message: message}
+    }
+    fn from_context(context: &Context, major: c_int) -> Krb5Error {
+        let message = context.error_message(major);
+        match message {
+            Some(msg) => Krb5Error{major: major, message: msg},
+            None => Krb5Error::new(major),
         }
+    }
+    fn description(&self) -> &str {
+        self.message.as_ref()
     }
 }
 
 impl std::fmt::Display for Krb5Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.as_str())
+        write!(f, "{}", self.message)
     }
 }
 
@@ -55,7 +72,7 @@ impl std::error::Error for Error {
             // problem is that it must be an &str, and if we take a
             // ref to e.as_str(), the borrow doesn't last long enough.
             // Error::Krb5(ref e) => e.as_str().as_ref(),
-            Error::Krb5(_) => "",
+            Error::Krb5(ref e) => e.description(),
         }
     }
     fn cause(&self) -> Option<&std::error::Error> {
@@ -110,8 +127,16 @@ impl Context {
         if err == 0 {
             Ok(Context{ctx: kcontext})
         } else {
-            Err(Error::Krb5(Krb5Error{major: err, minor: None}))
+            Err(Error::Krb5(Krb5Error::new(err)))
         }
+    }
+
+    fn error_message(&self, code: c_int) -> Option<String> {
+        let raw = unsafe{krb5_get_error_message(self.ctx, code)};
+        unsafe{krb5_clear_error_message(self.ctx)};
+        let res = c_to_string(raw);
+        unsafe{krb5_free_error_message(self.ctx, raw)};
+        res
     }
 
     // TODO: evaluate if it's appropriate to return a CString, an
@@ -122,7 +147,7 @@ impl Context {
         let cname = try!(CString::new(name.as_bytes()));
         let err = unsafe {krb5_parse_name(self.ctx, cname.as_ptr(), &mut princ.princ)};
         if err != 0 {
-            return Err(Error::Krb5(Krb5Error{major: err, minor: None}));
+            return Err(Error::Krb5(Krb5Error::from_context(self, err)))
         }
 
 
@@ -134,7 +159,7 @@ impl Context {
                                                   MAX_USERNAME - 1,
                                                   &mut lname[..])};
         if err != 0 {
-            return Err(Error::Krb5(Krb5Error{major: err, minor: None}));
+            return Err(Error::Krb5(Krb5Error::from_context(self, err)));
         }
 
         // Need to find the length (position of the NUL put in place by
@@ -228,4 +253,24 @@ extern "C" {
                                aname: *mut krb5_principal,
                                size: c_int,
                                lname: *mut [u8]) -> c_int;
+
+
+    // From krb5.h:
+    //   const char * KRB5_CALLCONV
+    //   krb5_get_error_message(krb5_context ctx,
+    //                          krb5_error_code code);
+    fn krb5_get_error_message(context: *mut krb5_context,
+                              code: c_int) -> *const c_char;
+
+    // From krb5.h:
+    //   void KRB5_CALLCONV
+    //   krb5_clear_error_message(krb5_context ctx);
+    fn krb5_clear_error_message(context: *mut krb5_context);
+
+    // From krb5.h:
+    //   void KRB5_CALLCONV
+    //   krb5_free_error_message(krb5_context ctx,
+    //                           const char *msg);
+    fn krb5_free_error_message(context: *mut krb5_context,
+                               message: *const c_char);
 }
