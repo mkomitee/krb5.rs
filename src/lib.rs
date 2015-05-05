@@ -12,9 +12,6 @@ fn c_to_string(raw: *const c_char) -> Option<String> {
         .map(|o| o.to_string())
 }
 
-// TODO: We can do better here. The man pages indicate the specific
-// errors we may receive. For example, krb5_aname_to_localname returns
-// either KRB5_LNAME_NOTRANS or KRB5_CONFIG_NOTENUFSPACE.
 #[derive(Debug)]
 pub enum Error {
     Krb5(Krb5Error),
@@ -166,12 +163,8 @@ impl Context {
     }
 }
 
-// TODO: Do we want to make a Principal struct which wraps
-// krb5_principal so that it can become a first class citizen with
-// it's own Drop? If we do, we'll be able to actually use them to do
-// other things at some time. Unfortunately, the mechanism by which
-// it's freed would require us to capture a reference to the Context
-// within the Principal struct so it's available.
+// TODO: Is there any reason to actually expose the internals of
+// krb5_principal? If so we'll have to fill in the internals.
 // From krb5.h:
 //  typedef struct krb5_principal_data {
 //      krb5_magic magic;
@@ -181,8 +174,6 @@ impl Context {
 //      krb5_int32 type;
 //  } krb5_principal_data;
 //  typedef krb5_principal_data * krb5_principal;
-// Note: I'm leaving this as opaque because we don't actually use its
-// contents at all.
 #[allow(non_camel_case_types)]
 #[repr(C)]
 struct krb5_principal;
