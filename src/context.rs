@@ -79,3 +79,30 @@ impl Context {
         Ok(try!(String::from_utf8(lname)))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::Context;
+
+    #[test]
+    fn create_context() {
+        assert!(Context::new().is_ok());
+    }
+    #[test]
+    fn translate_localname_ok() {
+        // FIXME: This has a side effect which we don't reset.
+        ::std::env::set_var("KRB5_CONFIG", "example/krb5.conf");
+        let ctx = Context::new();
+        let localname = ctx.unwrap().localname("user@EXAMPLE.COM");
+        assert_eq!(localname.unwrap(), "user");
+    }
+    #[test]
+    #[should_panic(expected="No translation")]
+    fn translate_localname_err() {
+        // FIXME: This has a side effect which we don't reset.
+        ::std::env::set_var("KRB5_CONFIG", "example/krb5.conf.missing");
+        let ctx = Context::new();
+        let localname = ctx.unwrap().localname("user@EXAMPLE.COM");
+        localname.unwrap();
+    }
+}
